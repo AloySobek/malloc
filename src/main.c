@@ -14,6 +14,8 @@ __t_malloc_state __malloc_state;
 
 size_t global_variable = 0;
 
+void prealloc() {}
+
 void *mymalloc(size_t size) {
     void *ptr;
 
@@ -51,12 +53,7 @@ int test() {
         printf("%d ", array[i]);
     }
 
-    printf("\n");
-
     myfree(array);
-
-    // int *ptr =
-    //     mmap(NULL, N * sizeof(int), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
     // if (ptr == MAP_FAILED) {
     //     printf("Mapping Failed\n");
@@ -86,6 +83,7 @@ int test() {
 
     //     return 1;
     // }
+    //
     return (0);
 }
 
