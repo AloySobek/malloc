@@ -5,19 +5,20 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TINY_N 128
-#define TINY_SIZE 32
+#define TINY_N 16
+#define TINY_SIZE 128
 
-#define SMALL_N 128
-#define SMALL_SIZE 256
+#define SMALL_N 16
+#define SMALL_SIZE 1024
 
-#define LARGE_N 128
-#define LARGE_SIZE 2048
+#define LARGE_N 16
+#define LARGE_SIZE 16384
 
-enum Size { TINY, SMALL, LARGE, Max };
+enum Size { TINY, SMALL, LARGE, CUSTOM, Max };
 
 struct meta {
     int free;
+    int length;
 
     enum Size size;
 };
@@ -109,7 +110,13 @@ void *mymalloc(size_t size) {
 
         return NULL;
     } else {
-        return NULL;
+        void *ptr = mmap(NULL, sizeof(struct meta) + size, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+
+        (*((struct meta *)ptr)).length = size;
+        (*((struct meta *)ptr)).size = CUSTOM;
+
+        return ptr + sizeof(struct meta);
     }
 }
 
@@ -118,9 +125,12 @@ void myfree(void *ptr) {
         return;
     }
 
-    (*((struct meta *)(ptr - sizeof(struct meta)))).free = 1;
-
-    // munmap(ptr, (*((struct meta *)(ptr - sizeof(struct meta)))).size);
+    if ((*((struct meta *)(ptr - sizeof(struct meta)))).size == CUSTOM) {
+        munmap(ptr - sizeof(struct meta),
+               (*((struct meta *)(ptr - sizeof(struct meta)))).size + sizeof(struct meta));
+    } else {
+        (*((struct meta *)(ptr - sizeof(struct meta)))).free = 1;
+    }
 }
 
 void *myrealloc(void *ptr, size_t size) {
@@ -129,11 +139,15 @@ void *myrealloc(void *ptr, size_t size) {
     return mymalloc(size);
 }
 
-void benchmark(int times, int bytes) {
+double benchmark() {
+    srand(time(NULL));
+
+    int times = rand() % 10000 + 1;
+
     clock_t start = clock();
 
     for (int i = 0; i < times; ++i) {
-        char *array = mymalloc(sizeof(char) * bytes);
+        char *array = mymalloc(sizeof(char) * rand() % (10000 + 1));
 
         assert(array != NULL);
 
@@ -144,13 +158,10 @@ void benchmark(int times, int bytes) {
 
     double mydiff = difftime(end, start) / CLOCKS_PER_SEC;
 
-    printf("My malloc took %.8lf seconds to allocate and deallocate %d bytes %d times\n", mydiff,
-           bytes, times);
-
     start = clock();
 
     for (int i = 0; i < times; ++i) {
-        char *array = malloc(sizeof(char) * bytes);
+        char *array = malloc(sizeof(char) * rand() % (10000 + 1));
 
         assert(array != NULL);
 
@@ -161,28 +172,19 @@ void benchmark(int times, int bytes) {
 
     double diff = difftime(end, start) / CLOCKS_PER_SEC;
 
-    printf("Standard malloc took %.8lf seconds to allocate and deallocate %d bytes %d times\n",
-           diff, bytes, times);
-
-    printf("My malloc is %.8lf times slower than standard malloc\n", mydiff / diff);
+    return mydiff / diff;
 }
 
 int main(int argc, char **argv) {
-    if (argc != 3) {
-        printf("usage: malloc times bytes\n");
-
-        return 0;
-    }
-
     _prealloc();
 
-    int times = atoi(argv[1]);
-    int bytes = atoi(argv[2]);
+    double average = 0.0f;
 
-    // int times = 1;
-    // int bytes = 1;
+    for (int i = 0; i < 1000; ++i) {
+        average += benchmark();
+    }
 
-    benchmark(times, bytes);
+    printf("On average my malloc is %.8lf times slower than standard malloc\n", average / 1000.0f);
 
     return (0);
 }
