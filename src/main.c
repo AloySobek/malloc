@@ -1,47 +1,38 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <time.h>
 #include <unistd.h>
 
-#define TINY_N 32
-#define TINY_SIZE 128
+#define TINY_N 1024
+#define TINY_SIZE 64
 
-#define SMALL_N 64
-#define SMALL_SIZE 1024
+#define SMALL_N 128
+#define SMALL_SIZE 16384
 
-#define LARGE_N 32
-#define LARGE_SIZE 16384
-
-struct meta {
-    int free;
-    int length;
-};
-
+// 2^5(32) bytes
 struct block {
-    int free;
-    int length;
-
     struct block *next;
     struct block *prev;
+
+    size_t size;
 };
 
 struct heap {
-    void *tiny;
-    void *small;
-    void *large;
+    struct block *tiny;
+    struct block *small;
 
-    void *extra;
+    size_t size;
 };
 
 void *_heap = NULL;
 
-void *_global_ptr;
-
 struct block *_add_block(struct block *head, struct block *block) {
     if (block == NULL) {
-        return NULL;
+        return head;
     }
 
     if (head == NULL) {
@@ -50,146 +41,101 @@ struct block *_add_block(struct block *head, struct block *block) {
 
         return block;
     } else {
-        block->prev = head->prev;
         block->next = head;
+        block->prev = head->prev;
 
-        head->prev->next = block;
-        head->prev = block;
+        block->prev->next = block;
+        block->next->prev = block;
 
         return head;
     }
 }
 
-struct block *_remove_block(struct block *head) {}
+struct block *_remove_block(struct block *head, struct block **block) {
+    if (head == NULL) {
+        return NULL;
+    }
 
-void *_allocate_heap() {
-    size_t size = 0;
+    *block = head->prev;
 
-    size += TINY_N * TINY_SIZE + SMALL_N * SMALL_SIZE + LARGE_N * LARGE_SIZE;
-    size += sizeof(struct heap);
-    size += (sizeof(struct meta) * TINY_N * SMALL_N * LARGE_N);
+    (*block)->prev->next = (*block)->next;
+    (*block)->next->prev = (*block)->prev;
+
+    (*block)->prev = NULL;
+    (*block)->next = NULL;
+
+    if (head == *block) {
+        return NULL;
+    }
+
+    return head;
+}
+
+void *_allocate_heap(size_t tiny_n, size_t tiny_size, size_t small_n, size_t small_size) {
+    size_t size = sizeof(struct heap) + sizeof(struct block) * tiny_n * small_n +
+                  tiny_n * tiny_size + small_n * small_size;
+
     size += size % getpagesize();
 
     _heap = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
-    assert(_heap != MAP_FAILED && "Heap allocation failed");
+    assert(_heap != MAP_FAILED);
 
-    ((struct heap *)_heap)->tiny = _heap + sizeof(struct heap);
-    ((struct heap *)_heap)->small =
-        ((struct heap *)_heap)->tiny + ((sizeof(struct meta) * TINY_N) + (TINY_N * TINY_SIZE));
-    ((struct heap *)_heap)->large =
-        ((struct heap *)_heap)->small + ((sizeof(struct meta) * SMALL_N) + (SMALL_N * SMALL_SIZE));
+    ((struct heap *)_heap)->tiny = NULL;
+    ((struct heap *)_heap)->small = NULL;
+    ((struct heap *)_heap)->size = size;
 
-    void *iter = ((struct heap *)_heap)->tiny;
+    void *iter = _heap + sizeof(struct heap);
 
-    for (int i = 0; i < TINY_N; ++i, iter += (sizeof(struct meta) + TINY_SIZE)) {
-        (*((struct block *)iter)).free = 1;
-        (*((struct block *)iter)).length = TINY_SIZE;
+    for (int i = 0; i < tiny_n; ++i, iter += sizeof(struct block) + tiny_size) {
+        ((struct heap *)_heap)->tiny = _add_block(((struct heap *)_heap)->tiny, iter);
 
-        _add_free_block(((struct heap *)_heap)->tiny, iter);
+        ((struct block *)iter)->size = tiny_size;
     }
 
-    iter = ((struct heap *)_heap)->small;
+    iter = _heap + sizeof(struct heap) + sizeof(struct block) * tiny_n + tiny_size * tiny_n;
 
-    for (int i = 0; i < SMALL_N; ++i, iter += (sizeof(struct meta) + SMALL_SIZE)) {
-        (*((struct meta *)iter)).free = 1;
+    for (int i = 0; i < small_n; ++i, iter += sizeof(struct block) + small_size) {
+        ((struct heap *)_heap)->small = _add_block(((struct heap *)_heap)->small, iter);
 
-        (*((struct meta *)iter)).size = SMALL;
+        ((struct block *)iter)->size = small_size;
     }
 
-    iter = large;
-
-    for (int i = 0; i < LARGE_N; ++i, iter += (sizeof(struct meta) + LARGE_SIZE)) {
-        (*((struct meta *)iter)).free = 1;
-
-        (*((struct meta *)iter)).size = LARGE;
-    }
-
-    _global_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-
-    assert(_global_ptr != MAP_FAILED);
-
-    void *tiny = _global_ptr;
-    void *small = tiny + ((sizeof(struct meta) * TINY_N) + (TINY_N * TINY_SIZE));
-    void *large = small + ((sizeof(struct meta) * SMALL_N) + (SMALL_N * SMALL_SIZE));
-
-    void *iter = tiny;
-
-    for (int i = 0; i < TINY_N; ++i, iter += (sizeof(struct meta) + TINY_SIZE)) {
-        (*((struct meta *)iter)).free = 1;
-
-        (*((struct meta *)iter)).size = TINY;
-    }
-
-    iter = small;
-
-    for (int i = 0; i < SMALL_N; ++i, iter += (sizeof(struct meta) + SMALL_SIZE)) {
-        (*((struct meta *)iter)).free = 1;
-
-        (*((struct meta *)iter)).size = SMALL;
-    }
-
-    iter = large;
-
-    for (int i = 0; i < LARGE_N; ++i, iter += (sizeof(struct meta) + LARGE_SIZE)) {
-        (*((struct meta *)iter)).free = 1;
-
-        (*((struct meta *)iter)).size = LARGE;
-    }
+    return _heap;
 }
 
 void *mymalloc(size_t size) {
-    if (size < TINY_SIZE) {
-        void *iter = _global_ptr;
+    if (_heap == NULL) {
+        _heap = _allocate_heap(TINY_N, TINY_SIZE, SMALL_N, SMALL_SIZE);
+    }
 
-        while ((*((struct meta *)iter)).size == TINY) {
-            if ((*((struct meta *)iter)).free) {
-                (*((struct meta *)iter)).free = 0;
+    if (size <= TINY_SIZE) {
+        struct block *block = NULL;
 
-                return iter + sizeof(struct meta);
-            }
+        ((struct heap *)_heap)->tiny = _remove_block(((struct heap *)_heap)->tiny, &block);
 
-            iter += (sizeof(struct meta) + TINY_SIZE);
+        if (block != NULL) {
+            return (void *)block + sizeof(struct block);
         }
 
         return NULL;
-    } else if (size < SMALL_SIZE) {
-        void *iter = _global_ptr + ((sizeof(struct meta) * TINY_N) + (TINY_N * TINY_SIZE));
+    } else if (size <= SMALL_SIZE) {
+        struct block *block = NULL;
 
-        while ((*((struct meta *)iter)).size == SMALL) {
-            if ((*((struct meta *)iter)).free) {
-                (*((struct meta *)iter)).free = 0;
+        ((struct heap *)_heap)->small = _remove_block(((struct heap *)_heap)->small, &block);
 
-                return iter + sizeof(struct meta);
-            }
-
-            iter += (sizeof(struct meta) + SMALL_SIZE);
-        }
-
-        return NULL;
-    } else if (size < LARGE_SIZE) {
-        void *iter = _global_ptr + ((sizeof(struct meta) * TINY_N) + (TINY_N * TINY_SIZE)) +
-                     ((sizeof(struct meta) * SMALL_N) + (SMALL_N * SMALL_SIZE));
-
-        while ((*((struct meta *)iter)).size == LARGE) {
-            if ((*((struct meta *)iter)).free) {
-                (*((struct meta *)iter)).free = 0;
-
-                return iter + sizeof(struct meta);
-            }
-
-            iter += (sizeof(struct meta) + LARGE_SIZE);
+        if (block != NULL) {
+            return (void *)block + sizeof(struct block);
         }
 
         return NULL;
     } else {
-        void *ptr = mmap(NULL, sizeof(struct meta) + size, PROT_READ | PROT_WRITE,
+        void *ptr = mmap(NULL, sizeof(struct block) + size, PROT_READ | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
-        (*((struct meta *)ptr)).length = size;
-        (*((struct meta *)ptr)).size = CUSTOM;
+        (*((struct block *)ptr)).size = size;
 
-        return ptr + sizeof(struct meta);
+        return ptr + sizeof(struct block);
     }
 }
 
@@ -198,18 +144,30 @@ void myfree(void *ptr) {
         return;
     }
 
-    if ((*((struct meta *)(ptr - sizeof(struct meta)))).size == CUSTOM) {
-        munmap(ptr - sizeof(struct meta),
-               (*((struct meta *)(ptr - sizeof(struct meta)))).size + sizeof(struct meta));
+    struct block *block = ptr - sizeof(struct block);
+
+    size_t size = ((struct block *)(ptr - sizeof(struct block)))->size;
+
+    if (size <= TINY_SIZE) {
+        ((struct heap *)_heap)->tiny =
+            _add_block(((struct heap *)_heap)->tiny, ptr - sizeof(struct block));
+    } else if (size <= SMALL_SIZE) {
+        ((struct heap *)_heap)->small =
+            _add_block(((struct heap *)_heap)->small, ptr - sizeof(struct block));
     } else {
-        (*((struct meta *)(ptr - sizeof(struct meta)))).free = 1;
+        munmap(ptr - sizeof(struct block),
+               ((struct block *)(ptr - sizeof(struct block)))->size + sizeof(struct block));
     }
 }
 
 void *myrealloc(void *ptr, size_t size) {
+    void *new = mymalloc(size);
+
+    memcpy(new, ptr, ((struct block *)(ptr - sizeof(struct block)))->size);
+
     myfree(ptr);
 
-    return mymalloc(size);
+    return new;
 }
 
 double benchmark() {
@@ -235,7 +193,6 @@ double benchmark() {
 
     for (int i = 0; i < times; ++i) {
         char *array = malloc(sizeof(char) * rand() % (10000 + 1));
-        char *new_array = malloc(sizeof(char) * rand() % (10000 + 1));
 
         assert(array != NULL);
 
@@ -250,8 +207,6 @@ double benchmark() {
 }
 
 int main(int argc, char **argv) {
-    _prealloc();
-
     double average = 0.0f;
 
     for (int i = 0; i < 1000; ++i) {
