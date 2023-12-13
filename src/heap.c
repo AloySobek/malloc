@@ -21,7 +21,8 @@ void *_allocate_heap(size_t tiny_n, size_t tiny_size, size_t small_n, size_t sma
 
         ((struct heap *)heap)->tiny = _add_block(((struct heap *)heap)->tiny, iter);
 
-        ((struct block *)iter)->size = tiny_size;
+        ((struct block *)iter)->from_heap_size = tiny_size;
+        ((struct block *)iter)->size = 0;
     }
 
     iter = heap + sizeof(struct heap) + sizeof(struct block) * tiny_n + tiny_size * tiny_n;
@@ -31,7 +32,8 @@ void *_allocate_heap(size_t tiny_n, size_t tiny_size, size_t small_n, size_t sma
 
         ((struct heap *)heap)->small = _add_block(((struct heap *)heap)->small, iter);
 
-        ((struct block *)iter)->size = small_size;
+        ((struct block *)iter)->from_heap_size = small_size;
+        ((struct block *)iter)->size = 0;
     }
 
     return heap;

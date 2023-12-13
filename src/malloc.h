@@ -12,7 +12,7 @@
 #define SMALL_N 4096
 #define SMALL_SIZE 2048
 
-#define MAX_HEAPS 16
+#define MAX_HEAPS 4
 
 struct heap;
 
@@ -22,6 +22,7 @@ struct block {
     struct block *next;
     struct block *prev;
 
+    size_t from_heap_size;
     size_t size;
 };
 

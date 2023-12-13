@@ -34,6 +34,8 @@ void *malloc(size_t size) {
             ((struct heap *)iter)->next = heap;
             heap->prev = iter;
         }
+
+        iter = ((struct heap *)iter)->next;
     }
 
     void *block = mmap(NULL, sizeof(struct block) + size, PROT_READ | PROT_WRITE,
@@ -43,6 +45,7 @@ void *malloc(size_t size) {
         return NULL;
     }
 
+    ((struct block *)block)->from_heap_size = 0;
     ((struct block *)block)->size = size;
 
     return block + sizeof(struct block);

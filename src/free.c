@@ -7,14 +7,10 @@ void free(void *ptr) {
 
     struct block *block = ptr - sizeof(struct block);
 
-    if (block->size <= TINY_SIZE) {
-        struct heap *heap = block->heap;
-
-        heap->tiny = _add_block(heap->tiny, block);
-    } else if (block->size <= SMALL_SIZE) {
-        struct heap *heap = block->heap;
-
-        heap->small = _add_block(heap->small, block);
+    if (block->from_heap_size == TINY_SIZE) {
+        block->heap->tiny = _add_block(block->heap->tiny, block);
+    } else if (block->from_heap_size == SMALL_SIZE) {
+        block->heap->small = _add_block(block->heap->small, block);
     } else {
         munmap(block, sizeof(struct block) + block->size);
     }
