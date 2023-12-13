@@ -1,7 +1,7 @@
 #include "malloc.h"
 
 void free(void *ptr) {
-    if (ptr == NULL) {
+    if (!ptr) {
         return;
     }
 
