@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-#define N 10000
+#define N 100
 
 void benchmark(const char *filename) {
     FILE *file = fopen(filename, "w+");

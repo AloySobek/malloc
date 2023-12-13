@@ -10,8 +10,8 @@
 #define TINY_N 8192
 #define TINY_SIZE 64
 
-#define SMALL_N 8192
-#define SMALL_SIZE 1024
+#define SMALL_N 1024
+#define SMALL_SIZE 2048
 
 #define MAX_HEAPS 4
 
