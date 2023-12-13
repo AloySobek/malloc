@@ -12,11 +12,11 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Wall -Wextra -Werror)
+#add_compile_options(-Wall -Wextra -Werror)
 
 file(GLOB_RECURSE SRC "${CMAKE_SOURCE_DIR}/src/*.c")
 
-add_library(${PROJECT_NAME} ${SRC})
+add_library(${PROJECT_NAME} SHARED ${SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/src)
 

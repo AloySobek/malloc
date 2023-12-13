@@ -6,17 +6,16 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define TINY_N 1024
+#define TINY_N 16384
 #define TINY_SIZE 64
 
-#define SMALL_N 256
-#define SMALL_SIZE 1024
+#define SMALL_N 4096
+#define SMALL_SIZE 2048
 
-#define MAX_HEAPS 8
+#define MAX_HEAPS 16
 
 struct heap;
 
-// 2^5(32) bytes
 struct block {
     struct heap *heap;
 
@@ -34,7 +33,7 @@ struct heap {
     struct block *small;
 };
 
-extern struct heap *_heap;
+extern void *_heap;
 
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);

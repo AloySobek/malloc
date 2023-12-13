@@ -31,8 +31,8 @@ struct block *_remove_block(struct block *head, struct block **block) {
     (*block)->prev->next = (*block)->next;
     (*block)->next->prev = (*block)->prev;
 
-    (*block)->prev = NULL;
     (*block)->next = NULL;
+    (*block)->prev = NULL;
 
     if (head == *block) {
         return NULL;

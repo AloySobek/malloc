@@ -9,39 +9,41 @@ void *malloc(size_t size) {
         _heap = _allocate_heap(TINY_N, TINY_SIZE, SMALL_N, SMALL_SIZE);
     }
 
-    struct heap *iter = _heap;
+    void *iter = _heap;
 
-    for (int i = 0; i < MAX_HEAPS; ++i, iter = iter->next) {
-        struct block *block = NULL;
+    for (int i = 0; i < MAX_HEAPS; ++i) {
+        void *block = NULL;
 
         if (size <= TINY_SIZE) {
-            iter->tiny = _remove_block(iter->tiny, &block);
+            ((struct heap *)iter)->tiny =
+                _remove_block(((struct heap *)iter)->tiny, (struct block **)&block);
         } else if (size <= SMALL_SIZE) {
-            iter->small = _remove_block(iter->small, &block);
+            ((struct heap *)iter)->small =
+                _remove_block(((struct heap *)iter)->small, (struct block **)&block);
         } else {
             break;
         }
 
         if (block != NULL) {
-            return (void *)block + sizeof(struct block);
+            return block + sizeof(struct block);
         }
 
-        if (iter->next == NULL) {
+        if (((struct heap *)iter)->next == NULL) {
             struct heap *heap = _allocate_heap(TINY_N, TINY_SIZE, SMALL_N, SMALL_SIZE);
 
-            iter->next = heap;
+            ((struct heap *)iter)->next = heap;
             heap->prev = iter;
         }
     }
 
-    void *ptr = mmap(NULL, sizeof(struct block) + size, PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+    void *block = mmap(NULL, sizeof(struct block) + size, PROT_READ | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
-    if (ptr == MAP_FAILED) {
+    if (block == MAP_FAILED) {
         return NULL;
     }
 
-    (*((struct block *)ptr)).size = size;
+    ((struct block *)block)->size = size;
 
-    return ptr + sizeof(struct block);
+    return block + sizeof(struct block);
 }

@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #define N 10000
@@ -17,6 +18,8 @@ void benchmark(const char *filename) {
             arrays[i] = malloc(sizeof(char) * n);
 
             assert(arrays[i] != NULL && "Malloc failed to allocate memory (NULL returned)");
+
+            memset(arrays[i], 77, sizeof(char) * n);
         }
 
         for (int i = 0; i < N; ++i) {
