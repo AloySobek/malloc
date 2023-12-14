@@ -37,6 +37,16 @@ void *malloc(size_t size) {
     }
 
     if (!block) {
+        if (_stats.current_heap_size - _stats.current_heap_usage >= size) {
+            for (struct block *iter = _stats.blocks; iter; iter = iter->next) {
+                // Return block if found
+            }
+            // We have enough free bytes by the memory is too fragmented to allocate continuum block
+            // of memory
+        } else {
+            // Heap is not large enough - new block required
+        }
+
         if ((block = mmap(
                  NULL, ((sizeof(struct block) + size) + getpagesize() - 1) & ~(getpagesize() - 1),
                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0)) == MAP_FAILED) {

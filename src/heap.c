@@ -1,6 +1,7 @@
 #include "malloc.h"
 
 void *_heap = NULL;
+struct stats _stats = {0};
 
 void *_allocate_heap(size_t tiny_n, size_t tiny_size, size_t small_n, size_t small_size) {
     size_t size = ((sizeof(struct heap) + (sizeof(struct block) * tiny_n * small_n) +

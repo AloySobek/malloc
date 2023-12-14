@@ -7,11 +7,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define TINY_N 8192
+#define TINY_N 16384
 #define TINY_SIZE 64
 
-#define SMALL_N 1024
-#define SMALL_SIZE 2048
+#define SMALL_N 2048
+#define SMALL_SIZE 16384
 
 #define MAX_HEAPS 4
 
@@ -32,9 +32,21 @@ struct heap {
 
     struct block *tiny;
     struct block *small;
+    struct block *large;
+};
+
+struct stats {
+    size_t max_heap_size;
+    size_t peak_heap_size;
+    size_t current_heap_size;
+    size_t current_heap_usage;
+    size_t n_blocks;
+
+    struct block *blocks;
 };
 
 extern void *_heap;
+extern struct stats _stats;
 
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
