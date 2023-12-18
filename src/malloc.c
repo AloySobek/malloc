@@ -1,64 +1,69 @@
 #include "malloc.h"
 
 void *malloc(size_t size) {
-    if (!_heap) {
-        _heap = _allocate_heap(TINY_N, TINY_SIZE, SMALL_N, SMALL_SIZE);
-    }
-
     if (size == 0) {
         return NULL;
     }
 
-    void *block = NULL;
+    struct block *block = _get_block(size);
 
-    if (_heap) {
-        void *iter = _heap;
+    return block ? block + 1 : NULL;
+}
 
-        for (int i = 0; i < MAX_HEAPS && !block; ++i) {
-            if (size <= TINY_SIZE) {
-                ((struct heap *)_heap)->tiny =
-                    _remove_block(((struct heap *)_heap)->tiny, (struct block **)&block);
-            } else if (size <= SMALL_SIZE) {
-                ((struct heap *)_heap)->small =
-                    _remove_block(((struct heap *)_heap)->small, (struct block **)&block);
-            }
-
-            if (!((struct heap *)iter)->next) {
-                ((struct heap *)iter)->next =
-                    _allocate_heap(TINY_N, TINY_SIZE, SMALL_N, SMALL_SIZE);
-
-                if (!((struct heap *)iter)->next) {
-                    break;
-                }
-            }
-
-            iter = ((struct heap *)iter)->next;
-        }
+void free(void *ptr) {
+    if (!ptr) {
+        return;
     }
 
-    if (!block) {
-        if (_stats.current_heap_size - _stats.current_heap_usage >= size) {
-            for (struct block *iter = _stats.blocks; iter; iter = iter->next) {
-                // Return block if found
-            }
-            // We have enough free bytes by the memory is too fragmented to allocate continuum block
-            // of memory
-        } else {
-            // Heap is not large enough - new block required
+    struct block *block = ptr - sizeof(struct block);
+
+    _return_block(block);
+}
+
+void *realloc(void *ptr, size_t size) {
+    if (ptr == NULL && size) {
+        return malloc(size);
+    } else if (ptr != NULL && !size) {
+        free(ptr);
+
+        return NULL;
+    } else if (ptr != NULL && size) {
+        void *new = malloc(size);
+
+        if (!new) {
+            return NULL;
         }
 
-        if ((block = mmap(
-                 NULL, ((sizeof(struct block) + size) + getpagesize() - 1) & ~(getpagesize() - 1),
-                 PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0)) == MAP_FAILED) {
-            block = NULL;
+        struct block *block = ptr - sizeof(struct block);
+
+        size = size < block->size ? size : block->size;
+
+        for (size_t i = 0; i < size; ++i) {
+            *(char *)(new + i) = *(char *)(ptr + i);
         }
+
+        return new;
+    } else {
+        return NULL;
+    }
+}
+
+void *calloc(size_t nmemb, size_t size) {
+    size_t res;
+
+    if (__builtin_mul_overflow(nmemb, size, &res)) {
+        return NULL;
     }
 
-    if (block) {
-        ((struct block *)block)->size = size;
+    void *ptr = malloc(res);
 
-        return block + sizeof(struct block);
+    if (ptr == NULL) {
+        return NULL;
     }
 
-    return NULL;
+    for (size_t i = 0; i < res; ++i) {
+        *(char *)(ptr + i) = 0;
+    }
+
+    return ptr;
 }

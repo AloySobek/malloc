@@ -1,61 +1,77 @@
 #ifndef MALLOC_H
 #define MALLOC_H
 
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #define TINY_N 16384
 #define TINY_SIZE 64
 
-#define SMALL_N 2048
+#define SMALL_N 1024
 #define SMALL_SIZE 16384
 
-#define MAX_HEAPS 4
+#define MAX_CLUSTERS 32
 
+struct cluster;
 struct heap;
 
+enum type { TinyBlock, SmallBlock, LargeBlock, MaxBlock };
+
+struct doubly_linked_list_node {
+    struct doubly_linked_list_node *next;
+    struct doubly_linked_list_node *prev;
+};
+
 struct block {
-    struct heap *heap;
+    struct doubly_linked_list_node node;
 
-    struct block *next;
-    struct block *prev;
+    struct cluster *cluster;
 
-    size_t from_heap_size;
+    size_t size;
+
+    enum type type;
+};
+
+struct cluster {
+    struct doubly_linked_list_node node;
+
+    struct block *available_blocks;
+    struct block *occupied_blocks;
+
+    size_t capacity;
     size_t size;
 };
 
 struct heap {
-    struct heap *next;
+    struct cluster *available_clusters;
+    struct cluster *occupied_clusters;
 
-    struct block *tiny;
-    struct block *small;
+    size_t capacity;
+    size_t size;
+};
+
+struct pool {
+    struct heap tiny;
+    struct heap small;
+
     struct block *large;
 };
 
-struct stats {
-    size_t max_heap_size;
-    size_t peak_heap_size;
-    size_t current_heap_size;
-    size_t current_heap_usage;
-    size_t n_blocks;
-
-    struct block *blocks;
-};
-
-extern void *_heap;
-extern struct stats _stats;
+extern struct pool _pool;
 
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
 void *calloc(size_t nmemb, size_t size);
 void free(void *ptr);
 
-struct block *_add_block(struct block *head, struct block *block);
-struct block *_remove_block(struct block *head, struct block **block);
+struct block *_get_block(size_t size);
+void _return_block(struct block *block);
 
-void *_allocate_heap(size_t tiny_n, size_t tiny_size, size_t small_n, size_t small_size);
+void ft_putchar(const char c);
+void ft_putstr(const char *s);
+void ft_itoa_base(size_t nb, char base, char lenght, char prefix);
+
+void show_alloc_mem();
 
 #endif
