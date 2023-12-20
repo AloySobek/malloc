@@ -5,7 +5,9 @@ void *malloc(size_t size) {
         return NULL;
     }
 
+    pthread_mutex_lock(&_mutex);
     struct block *block = _get_block(size);
+    pthread_mutex_unlock(&_mutex);
 
     return block ? block + 1 : NULL;
 }
@@ -17,7 +19,9 @@ void free(void *ptr) {
 
     struct block *block = ptr - sizeof(struct block);
 
+    pthread_mutex_lock(&_mutex);
     _return_block(block);
+    pthread_mutex_unlock(&_mutex);
 }
 
 void *realloc(void *ptr, size_t size) {
@@ -34,6 +38,7 @@ void *realloc(void *ptr, size_t size) {
             return NULL;
         }
 
+        pthread_mutex_lock(&_mutex);
         struct block *block = ptr - sizeof(struct block);
 
         size = size < block->size ? size : block->size;
@@ -41,6 +46,7 @@ void *realloc(void *ptr, size_t size) {
         for (size_t i = 0; i < size; ++i) {
             *(char *)(new + i) = *(char *)(ptr + i);
         }
+        pthread_mutex_unlock(&_mutex);
 
         return new;
     } else {
@@ -61,9 +67,11 @@ void *calloc(size_t nmemb, size_t size) {
         return NULL;
     }
 
+    pthread_mutex_lock(&_mutex);
     for (size_t i = 0; i < res; ++i) {
         *(char *)(ptr + i) = 0;
     }
+    pthread_mutex_unlock(&_mutex);
 
     return ptr;
 }

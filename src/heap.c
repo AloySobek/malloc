@@ -1,6 +1,7 @@
 #include "malloc.h"
 
 struct pool _pool = {0};
+pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct doubly_linked_list_node *_insert_node(struct doubly_linked_list_node *head,
                                                     struct doubly_linked_list_node *node) {
@@ -146,7 +147,7 @@ struct block *_get_block(size_t size) {
         block = mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
         if (block == MAP_FAILED) {
-            block = NULL;
+            return NULL;
         }
 
         ((struct block *)block)->node.next = NULL;

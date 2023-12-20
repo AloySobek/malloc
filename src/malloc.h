@@ -1,6 +1,7 @@
 #ifndef MALLOC_H
 #define MALLOC_H
 
+#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -59,6 +60,7 @@ struct pool {
 };
 
 extern struct pool _pool;
+extern pthread_mutex_t _mutex;
 
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
@@ -67,11 +69,5 @@ void free(void *ptr);
 
 struct block *_get_block(size_t size);
 void _return_block(struct block *block);
-
-void ft_putchar(const char c);
-void ft_putstr(const char *s);
-void ft_itoa_base(size_t nb, char base, char lenght, char prefix);
-
-void show_alloc_mem();
 
 #endif
