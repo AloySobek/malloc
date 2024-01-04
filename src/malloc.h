@@ -6,13 +6,22 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#define TINY_N 16384
+#define TINY_N 4096
 #define TINY_SIZE 64
 
 #define SMALL_N 1024
 #define SMALL_SIZE 16384
 
 #define MAX_CLUSTERS 32
+#define MIN_AVAILABLE_CLUSTERS 1
+
+#define _INSERT_BLOCK(head, block)                                                                 \
+    (struct block *)_insert_node((struct doubly_linked_list_node *)head,                           \
+                                 (struct doubly_linked_list_node *)block)
+
+#define _REMOVE_BLOCK(head, block)                                                                 \
+    (struct block *)_remove_node((struct doubly_linked_list_node *)head,                           \
+                                 (struct doubly_linked_list_node **)&block)
 
 struct cluster;
 struct heap;

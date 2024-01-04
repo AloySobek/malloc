@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# add_compile_options(-Wall -Wextra -Werror)
+add_compile_options(-Wall -Wextra -Werror)
 
 FetchContent_Declare(
   check
@@ -42,9 +42,3 @@ if(LINK)
 endif()
 
 target_link_libraries(benchmark PRIVATE check)
-
-get_cmake_property(_variableNames VARIABLES)
-list(SORT _variableNames)
-foreach(_variableName ${_variableNames})
-  message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()

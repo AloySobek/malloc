@@ -75,11 +75,10 @@ static struct cluster *_allocate_cluster(enum type type, size_t n, size_t size) 
         ((struct block *)block)->node.next = NULL;
         ((struct block *)block)->node.prev = NULL;
         ((struct block *)block)->cluster = cluster;
-        ((struct block *)block)->size = size;
+        ((struct block *)block)->size = 0;
         ((struct block *)block)->type = type;
 
-        cluster->available_blocks = (struct block *)_insert_node(
-            (struct doubly_linked_list_node *)cluster->available_blocks, block);
+        cluster->available_blocks = _INSERT_BLOCK(cluster->available_blocks, block);
     }
 
     return cluster;
@@ -105,11 +104,9 @@ struct block *_get_block(size_t size) {
     }
 
     if (heap) {
-        heap->available_clusters = (struct cluster *)_remove_node(
-            (struct doubly_linked_list_node *)heap->available_clusters,
-            (struct doubly_linked_list_node **)&cluster);
+        heap->available_clusters = _REMOVE_BLOCK(heap->available_clusters, cluster);
 
-        if (!cluster) {
+        if (!cluster && heap->capacity / n < MAX_CLUSTERS) {
             if ((cluster = _allocate_cluster(type, n, s))) {
                 heap->capacity += n;
                 heap->size += n;
@@ -117,22 +114,13 @@ struct block *_get_block(size_t size) {
         }
 
         if (cluster) {
-            cluster->available_blocks = (struct block *)_remove_node(
-                (struct doubly_linked_list_node *)cluster->available_blocks,
-                (struct doubly_linked_list_node **)&block);
-
-            cluster->occupied_blocks = (struct block *)_insert_node(
-                (struct doubly_linked_list_node *)cluster->occupied_blocks,
-                (struct doubly_linked_list_node *)block);
+            cluster->available_blocks = _REMOVE_BLOCK(cluster->available_blocks, block);
+            cluster->occupied_blocks = _INSERT_BLOCK(cluster->occupied_blocks, block);
 
             if (cluster->available_blocks) {
-                heap->available_clusters = (struct cluster *)_insert_node(
-                    (struct doubly_linked_list_node *)heap->available_clusters,
-                    (struct doubly_linked_list_node *)cluster);
+                heap->available_clusters = _INSERT_BLOCK(heap->available_clusters, cluster);
             } else {
-                heap->occupied_clusters = (struct cluster *)_insert_node(
-                    (struct doubly_linked_list_node *)heap->occupied_clusters,
-                    (struct doubly_linked_list_node *)cluster);
+                heap->occupied_clusters = _INSERT_BLOCK(heap->occupied_clusters, cluster);
             }
 
             cluster->size -= 1;
@@ -150,15 +138,15 @@ struct block *_get_block(size_t size) {
             return NULL;
         }
 
-        ((struct block *)block)->node.next = NULL;
-        ((struct block *)block)->node.prev = NULL;
-        ((struct block *)block)->cluster = NULL;
-        ((struct block *)block)->size = size;
-        ((struct block *)block)->type = LargeBlock;
+        block->node.next = NULL;
+        block->node.prev = NULL;
+        block->cluster = NULL;
+        block->type = LargeBlock;
 
-        _pool.large = (struct block *)_insert_node((struct doubly_linked_list_node *)_pool.large,
-                                                   (struct doubly_linked_list_node *)block);
+        _pool.large = _INSERT_BLOCK(_pool.large, block);
     }
+
+    block->size = size;
 
     return block;
 }
@@ -183,8 +171,7 @@ void _return_block(struct block *block) {
         break;
     }
     case LargeBlock: {
-        _pool.large = (struct block *)_remove_node((struct doubly_linked_list_node *)_pool.large,
-                                                   (struct doubly_linked_list_node **)&block);
+        _pool.large = _REMOVE_BLOCK(_pool.large, block);
 
         munmap(block, sizeof(struct block) + block->size);
 
@@ -195,13 +182,8 @@ void _return_block(struct block *block) {
     }
     }
 
-    block->cluster->occupied_blocks = (struct block *)_remove_node(
-        (struct doubly_linked_list_node *)(block->cluster->occupied_blocks),
-        (struct doubly_linked_list_node **)&block);
-
-    block->cluster->available_blocks = (struct block *)_insert_node(
-        (struct doubly_linked_list_node *)block->cluster->available_blocks,
-        (struct doubly_linked_list_node *)block);
+    block->cluster->occupied_blocks = _REMOVE_BLOCK(block->cluster->occupied_blocks, block);
+    block->cluster->available_blocks = _INSERT_BLOCK(block->cluster->available_blocks, block);
 
     if (!block->cluster->size) {
         heap->occupied_clusters = (struct cluster *)_remove_node(
@@ -216,8 +198,7 @@ void _return_block(struct block *block) {
     block->cluster->size += 1;
     heap->size += 1;
 
-    if (!block->cluster->occupied_blocks &&
-        heap->available_clusters != (struct cluster *)heap->available_clusters->node.next) {
+    if (!block->cluster->occupied_blocks && heap->size / n > MIN_AVAILABLE_CLUSTERS) {
         heap->available_clusters = (struct cluster *)_remove_node(
             (struct doubly_linked_list_node *)heap->available_clusters,
             (struct doubly_linked_list_node **)&block->cluster);
