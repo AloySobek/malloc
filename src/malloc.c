@@ -1,6 +1,6 @@
 #include "malloc.h"
 
-void *malloc(size_t size) {
+void *_malloc(size_t size) {
     if (size == 0) {
         return NULL;
     }
@@ -12,7 +12,7 @@ void *malloc(size_t size) {
     return block ? block + 1 : NULL;
 }
 
-void free(void *ptr) {
+void _free(void *ptr) {
     if (!ptr) {
         return;
     }
@@ -24,15 +24,15 @@ void free(void *ptr) {
     pthread_mutex_unlock(&_mutex);
 }
 
-void *realloc(void *ptr, size_t size) {
+void *_realloc(void *ptr, size_t size) {
     if (ptr == NULL && size) {
-        return malloc(size);
+        return _malloc(size);
     } else if (ptr != NULL && !size) {
-        free(ptr);
+        _free(ptr);
 
         return NULL;
     } else if (ptr != NULL && size) {
-        void *new = malloc(size);
+        void *new = _malloc(size);
 
         if (!new) {
             return NULL;
@@ -54,14 +54,14 @@ void *realloc(void *ptr, size_t size) {
     }
 }
 
-void *calloc(size_t nmemb, size_t size) {
+void *_calloc(size_t nmemb, size_t size) {
     size_t res;
 
     if (__builtin_mul_overflow(nmemb, size, &res)) {
         return NULL;
     }
 
-    void *ptr = malloc(res);
+    void *ptr = _malloc(res);
 
     if (ptr == NULL) {
         return NULL;

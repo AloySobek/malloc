@@ -71,10 +71,10 @@ struct pool {
 extern struct pool _pool;
 extern pthread_mutex_t _mutex;
 
-void *malloc(size_t size);
-void *realloc(void *ptr, size_t size);
-void *calloc(size_t nmemb, size_t size);
-void free(void *ptr);
+void *_malloc(size_t size);
+void *_realloc(void *ptr, size_t size);
+void *_calloc(size_t nmemb, size_t size);
+void _free(void *ptr);
 
 struct block *_get_block(size_t size);
 void _return_block(struct block *block);
