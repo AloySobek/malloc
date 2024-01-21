@@ -70,9 +70,11 @@ void *_realloc(void *ptr, size_t size) {
             return NULL;
         }
 
-        for (size_t i = 0; i < size; ++i) {
+        for (size_t i = 0; i < block->size; ++i) {
             *(char *)(new + i) = *(char *)(ptr + i);
         }
+
+        _free(ptr);
 
         return new;
     } else {
@@ -93,11 +95,9 @@ void *_calloc(size_t nmemb, size_t size) {
         return NULL;
     }
 
-    pthread_mutex_lock(&_mutex);
     for (size_t i = 0; i < res; ++i) {
         *(char *)(ptr + i) = 0;
     }
-    pthread_mutex_unlock(&_mutex);
 
     return ptr;
 }
