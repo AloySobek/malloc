@@ -1,6 +1,6 @@
 #include "malloc.h"
 
-struct pool _pool = {0};
+struct pool _pool = {{100, 64, 100, 1024, 32, 1, 1024, 0}, {0}, {0}, NULL, NULL, 0};
 pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct doubly_linked_list_node *_insert_node(struct doubly_linked_list_node *head,
@@ -91,22 +91,22 @@ struct block *_get_block(size_t size) {
     size_t n = 0, s = 0;
     enum type type = MaxBlock;
 
-    if (size <= TINY_SIZE) {
+    if (size <= _pool.cfg.tiny_size) {
         heap = &_pool.tiny;
-        n = TINY_N;
-        s = TINY_SIZE;
+        n = _pool.cfg.tiny_n;
+        s = _pool.cfg.tiny_size;
         type = TinyBlock;
-    } else if (size <= SMALL_SIZE) {
+    } else if (size <= _pool.cfg.small_size) {
         heap = &_pool.small;
-        n = SMALL_N;
-        s = SMALL_SIZE;
+        n = _pool.cfg.small_n;
+        s = _pool.cfg.small_size;
         type = SmallBlock;
     }
 
     if (heap) {
         heap->available_clusters = _REMOVE_BLOCK(heap->available_clusters, cluster);
 
-        if (!cluster && heap->capacity / n < MAX_CLUSTERS) {
+        if (!cluster && heap->capacity / n < _pool.cfg.max_clusters) {
             if ((cluster = _allocate_cluster(type, n, s))) {
                 heap->capacity += n;
                 heap->size += n;
@@ -158,15 +158,15 @@ void _return_block(struct block *block) {
     switch (block->type) {
     case TinyBlock: {
         heap = &_pool.tiny;
-        n = TINY_N;
-        s = TINY_SIZE;
+        n = _pool.cfg.tiny_n;
+        s = _pool.cfg.tiny_size;
 
         break;
     }
     case SmallBlock: {
         heap = &_pool.small;
-        n = SMALL_N;
-        s = SMALL_SIZE;
+        n = _pool.cfg.small_n;
+        s = _pool.cfg.small_size;
 
         break;
     }
@@ -198,7 +198,7 @@ void _return_block(struct block *block) {
     block->cluster->size += 1;
     heap->size += 1;
 
-    if (!block->cluster->occupied_blocks && heap->size / n > MIN_AVAILABLE_CLUSTERS) {
+    if (!block->cluster->occupied_blocks && heap->size / n > _pool.cfg.min_available_clusters) {
         heap->available_clusters = (struct cluster *)_remove_node(
             (struct doubly_linked_list_node *)heap->available_clusters,
             (struct doubly_linked_list_node **)&block->cluster);

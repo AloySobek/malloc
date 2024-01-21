@@ -1,45 +1,53 @@
 cmake_minimum_required(VERSION 3.18)
 
+if(NOT DEFINED ENV{HOSTTYPE})
+  execute_process(
+    COMMAND uname -m
+    OUTPUT_VARIABLE UNAME_M
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  execute_process(
+    COMMAND uname -s
+    OUTPUT_VARIABLE UNAME_S
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  set(ENV_HOSTTYPE "${UNAME_M}_${UNAME_S}")
+
+  set(ENV{HOSTTYPE} ${ENV_HOSTTYPE})
+endif()
+
+message("HOSTTYPE: $ENV{HOSTTYPE}")
+
 project(
-  malloc
+  "ft_malloc_$ENV{HOSTTYPE}"
   VERSION 0.1.0
   LANGUAGES C)
 
-include(CTest)
-include(FetchContent)
-
-option(BUILD_TESTS "" OFF)
+option(LINK "" OFF)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall -Wextra -Werror)
 
-FetchContent_Declare(
-  check
-  GIT_REPOSITORY https://github.com/libcheck/check.git
-  GIT_TAG 11970a7 # 0.15.2
-)
-
-FetchContent_MakeAvailable(check)
-
 file(GLOB_RECURSE SRC "${CMAKE_SOURCE_DIR}/src/*.c")
-file(GLOB_RECURSE TEST_SRC "${CMAKE_SOURCE_DIR}/test/*.c")
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/src)
 
-add_executable(first ${TEST_SRC})
+add_executable(benchmark ${CMAKE_SOURCE_DIR}/benchmark.c)
 
-target_include_directories(first PUBLIC ${CMAKE_SOURCE_DIR}/src)
-target_include_directories(first PUBLIC ${check_BINARY_DIR})
-target_include_directories(first PUBLIC ${check_BINARY_DIR}/src)
-target_include_directories(first PUBLIC ${check_SOURCE_DIR}/src)
+target_include_directories(benchmark PUBLIC ${CMAKE_SOURCE_DIR}/src)
 
-target_link_libraries(first PRIVATE ${PROJECT_NAME})
-target_link_libraries(first PRIVATE check)
+if(LINK)
+  target_link_libraries(benchmark PRIVATE ${PROJECT_NAME})
+endif()
 
-add_test(NAME first COMMAND first)
+add_custom_command(
+  TARGET ${PROJECT_NAME}
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${PROJECT_NAME}>
+          ${CMAKE_BINARY_DIR}/libft_malloc.dylib)

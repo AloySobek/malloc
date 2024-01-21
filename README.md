@@ -4,8 +4,6 @@
 * Thread safety
 * Sophisticated tests
 * Benchmark tools
-* Defragmentation
-* Heuristic algorithm for memory sizes bigger than preallocated sizes
 
 ## Heuristic
 
