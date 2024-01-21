@@ -61,7 +61,19 @@ struct heap {
     size_t size;
 };
 
+struct config {
+    size_t tiny_n;
+    size_t tiny_size;
+    size_t small_n;
+    size_t small_size;
+    size_t max_clusters;
+    size_t min_available_clusters;
+    size_t read_from_env;
+};
+
 struct pool {
+    struct config cfg;
+
     struct heap tiny;
     struct heap small;
 

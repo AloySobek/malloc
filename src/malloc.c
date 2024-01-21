@@ -6,7 +6,9 @@ void *_malloc(size_t size) {
     }
 
     pthread_mutex_lock(&_mutex);
+
     struct block *block = _get_block(size);
+
     pthread_mutex_unlock(&_mutex);
 
     return block ? block + 1 : NULL;
@@ -20,7 +22,9 @@ void _free(void *ptr) {
     struct block *block = ptr - sizeof(struct block);
 
     pthread_mutex_lock(&_mutex);
+
     _return_block(block);
+
     pthread_mutex_unlock(&_mutex);
 }
 
@@ -32,21 +36,43 @@ void *_realloc(void *ptr, size_t size) {
 
         return NULL;
     } else if (ptr != NULL && size) {
+        struct block *block = ptr - sizeof(struct block);
+
+        switch (block->type) {
+        case TinyBlock: {
+            if (size <= _pool.cfg.tiny_size) {
+                return ptr;
+            }
+
+            break;
+        }
+        case SmallBlock: {
+            if (size <= _pool.cfg.small_size) {
+                return ptr;
+            }
+
+            break;
+        }
+        case LargeBlock: {
+            if (size <= block->size) {
+                return ptr;
+            }
+            break;
+        }
+        default: {
+            break;
+        }
+        }
+
         void *new = _malloc(size);
 
         if (!new) {
             return NULL;
         }
 
-        pthread_mutex_lock(&_mutex);
-        struct block *block = ptr - sizeof(struct block);
-
-        size = size < block->size ? size : block->size;
-
         for (size_t i = 0; i < size; ++i) {
             *(char *)(new + i) = *(char *)(ptr + i);
         }
-        pthread_mutex_unlock(&_mutex);
 
         return new;
     } else {
