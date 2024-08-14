@@ -10,13 +10,13 @@ like dozens if not hundreds times slower than preallocation strategy
 
 ## Compatibility
 
-I've tried compiling neovim and a bunch open source C application in order to test
+I've tried compiling neovim and a bunch of open source C applications in order to test
 my malloc and it worked great. Sometimes even improving application performances
-which was weird considering the simplicity of my malloc
+which was weird considering the simplicity of this malloc
 
 ## Ideas
 
-There is a gazilion of algorithms for efficient memory allocation. I guess there is
+There is a gazillion of algorithms for efficient memory allocation. I guess there is
 no silver bullet for everybody. That's probably why gamedevs always write their own allocator.
 
 ### Heuristic?
